@@ -9,8 +9,9 @@ Documentación interactiva (Swagger) en http://localhost:8000/docs
 import logging
 import os
 
+import httpx
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel, Field
 
 # El grafo se importa (y por tanto se compila con MemorySaver) UNA sola vez,
@@ -22,6 +23,9 @@ load_dotenv()
 logger = logging.getLogger("api.router")
 
 MODELO = os.getenv("MODELO", "")
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN", "")
+TELEGRAM_SECRET = os.getenv("TELEGRAM_SECRET", "")
+TELEGRAM_API = "https://api.telegram.org"
 
 # --- Metadatos del Swagger (OpenAPI) ------------------------------------------
 
@@ -114,7 +118,36 @@ def chat(req: ChatRequest) -> ChatResponse:
     return ChatResponse(ruta=final["ruta"], motivo=final["motivo"], respuesta=final["respuesta"])
 
 
+def _enviar_telegram(chat_id: int, text: str) -> None:
+    """Envía un mensaje al chat con la API de Telegram (sin librerías de bot, solo httpx)."""
+    url = f"{TELEGRAM_API}/bot{TELEGRAM_TOKEN}/sendMessage"
+    try:
+        httpx.post(url, json={"chat_id": chat_id, "text": text}, timeout=10)
+    except Exception:
+        logger.exception("No se pudo enviar el mensaje a Telegram")
+
+
 @app.post("/telegram", tags=["telegram"], include_in_schema=False)
-async def telegram(update: dict) -> dict:
-    # Por ahora acepta cualquier JSON y responde ok. Se completa en la parte 5.
+def telegram(update: dict, x_telegram_bot_api_secret_token: str | None = Header(default=None)) -> dict:
+    # Telegram manda este header con el secret_token que registramos en setWebhook.
+    if x_telegram_bot_api_secret_token != TELEGRAM_SECRET:
+        raise HTTPException(status_code=403, detail="Secret token inválido")
+
+    message = update.get("message") or {}
+    text = message.get("text")
+    chat_id = (message.get("chat") or {}).get("id")
+
+    # Ignora updates sin texto (fotos, audios, stickers, etc.) o sin chat.
+    if not text or chat_id is None:
+        return {"ok": True}
+
+    config = {"configurable": {"thread_id": str(chat_id)}}
+    try:
+        respuesta = graph.invoke({"mensaje": text}, config)["respuesta"]
+    except Exception:
+        logger.exception("El grafo router falló procesando un mensaje de Telegram")
+        respuesta = "Ahora mismo no puedo responder. Intenta de nuevo en un momento."
+
+    _enviar_telegram(chat_id, respuesta)
+    # A Telegram siempre le respondemos 200 para que no reintente el update.
     return {"ok": True}

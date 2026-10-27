@@ -89,10 +89,42 @@ Pasos (desde el panel https://dashboard.heroku.com):
 
 ## Conectar Telegram
 
-> Se completa en la **parte 5** del curso; la ruta `/telegram` por ahora acepta cualquier JSON
-> y responde `{"ok": true}`.
+El bot se conecta **sin librerías de bot**, solo con `httpx`. Telegram manda cada mensaje a
+`PUBLIC_URL/telegram`; la API valida el secreto, invoca el grafo y responde con `sendMessage`.
 
-Flujo previsto: crear el bot con **@BotFather** (`/newbot`) para obtener `TELEGRAM_TOKEN`,
-elegir un `TELEGRAM_SECRET`, registrar el webhook apuntando a `PUBLIC_URL/telegram` con ese
-secreto, y hacer que `/telegram` lea `chat_id` y `text` del update, invoque el grafo y responda
-con `sendMessage`.
+1. **Crear el bot**: habla con **@BotFather** (`/newbot`), copia el token a `TELEGRAM_TOKEN`
+   en `.env` y elige un `TELEGRAM_SECRET` (cualquier cadena secreta).
+2. **Config Vars en Heroku**:
+
+   ```bash
+   heroku config:set TELEGRAM_TOKEN=... TELEGRAM_SECRET=... --app ecommerce-rbp
+   ```
+
+3. **Subir los cambios** a GitHub (y a Heroku, si no tienes Automatic Deploys):
+
+   ```bash
+   git add -A
+   git commit -m "telegram: webhook y sendMessage"
+   git push
+   ```
+
+4. **Registrar el webhook** y confirmarlo (con `PUBLIC_URL` apuntando a tu app de Heroku):
+
+   ```bash
+   python scripts/set_webhook.py     # setWebhook con url y secret_token
+   python scripts/webhook_info.py    # getWebhookInfo: confirma que quedó bien
+   ```
+
+5. **Probar**: escribe al bot los 6 mensajes del router y revisa en los logs qué ruta tomó cada uno:
+
+   ```bash
+   heroku logs --tail --app ecommerce-rbp
+   ```
+
+**Si el bot no responde**, revisa: el webhook apunta a **https** (no http), el `TELEGRAM_SECRET`
+es **igual** en Heroku y en el webhook, y el `TELEGRAM_TOKEN` es correcto. `webhook_info.py`
+muestra el último error pendiente.
+
+> **Probar en local sin desplegar (opcional):** levanta un túnel con
+> `cloudflared tunnel --url http://localhost:8000`, usa esa URL https como `PUBLIC_URL`,
+> corre `set_webhook.py` y prueba el bot contra tu máquina.
