@@ -1,0 +1,13 @@
+# Secretos y entorno
+.env
+
+# Entorno virtual
+.venv
+
+# Cachés de Python / herramientas
+__pycache__
+.pytest_cache
+.langgraph_api
+
+# Material local (capturas del curso): no es parte de la app
+capturas

@@ -1,0 +1,19 @@
+[
+  {"mensaje": "¿cuánto cuesta la chaqueta de cuero?", "esperado": "preventa"},
+  {"mensaje": "¿les queda stock de las zapatillas negras en talla 42?", "esperado": "preventa"},
+  {"mensaje": "¿aceptan pago en cuotas con tarjeta de crédito?", "esperado": "preventa"},
+  {"mensaje": "quiero comprar un polerón para regalo, ¿qué me recomiendan?", "esperado": "preventa"},
+  {"mensaje": "qué caro, ¿hay descuento?", "esperado": "preventa"},
+
+  {"mensaje": "¿cuándo llega lo que compré ayer?", "esperado": "postventa"},
+  {"mensaje": "mi pedido 7788 aún no llega y ya pasaron dos semanas", "esperado": "postventa"},
+  {"mensaje": "me llegó la talla equivocada, quiero cambiarla", "esperado": "postventa"},
+  {"mensaje": "el reloj que compré dejó de funcionar, ¿tiene garantía?", "esperado": "postventa"},
+  {"mensaje": "tengo un problema con una polera", "esperado": "postventa"},
+
+  {"mensaje": "buenas tardes", "esperado": "generica"},
+  {"mensaje": "¿va a llover mañana en Santiago?", "esperado": "generica"},
+  {"mensaje": "cuéntame un chiste", "esperado": "generica"},
+  {"mensaje": "¿quién ganó el mundial de 2022?", "esperado": "generica"},
+  {"mensaje": "¿cuál es la capital de Australia?", "esperado": "generica"}
+]
