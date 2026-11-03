@@ -18,6 +18,9 @@ from pydantic import BaseModel, Field
 # al arrancar la app; no en cada request.
 from src.router.graph import graph
 
+# Shim compatible con OpenAI (/v1/*) para clientes como Open WebUI.
+from api.openai_compat import router as openai_router
+
 load_dotenv()
 
 logger = logging.getLogger("api.router")
@@ -51,6 +54,9 @@ app = FastAPI(
     description=DESCRIPCION,
     openapi_tags=TAGS,
 )
+
+# Expone /v1/models y /v1/chat/completions (formato OpenAI) para Open WebUI.
+app.include_router(openai_router)
 
 
 # --- Modelos de entrada / salida ----------------------------------------------
