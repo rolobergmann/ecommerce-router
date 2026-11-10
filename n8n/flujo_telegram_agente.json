@@ -8,13 +8,13 @@
         ],
         "additionalFields": {}
       },
-      "id": "b2000000-0000-4000-8000-000000000001",
+      "id": "0640bba2-bd53-473d-a9b3-40f2fd5d75f4",
       "name": "Telegram Trigger",
       "type": "n8n-nodes-base.telegramTrigger",
       "typeVersion": 1.2,
       "position": [
         0,
-        0
+        256
       ],
       "webhookId": "b2000000-0000-4000-8000-0000000000bb"
     },
@@ -44,13 +44,13 @@
         "looseTypeValidation": true,
         "options": {}
       },
-      "id": "b2000000-0000-4000-8000-000000000002",
+      "id": "57394155-bf87-4d72-8153-5115c098dc8e",
       "name": "¿Trae texto?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
         240,
-        0
+        256
       ]
     },
     {
@@ -79,13 +79,13 @@
         },
         "options": {}
       },
-      "id": "b2000000-0000-4000-8000-000000000003",
+      "id": "0b277d7b-06cc-45dc-ae5c-9242608dcf7a",
       "name": "Normalizar",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        500,
-        -160
+        496,
+        96
       ]
     },
     {
@@ -93,7 +93,6 @@
         "method": "POST",
         "url": "https://ecommerce-rbp-b47b6797ae89.herokuapp.com/chat",
         "sendBody": true,
-        "contentType": "json",
         "bodyParameters": {
           "parameters": [
             {
@@ -110,13 +109,13 @@
           "timeout": 30000
         }
       },
-      "id": "b2000000-0000-4000-8000-000000000004",
+      "id": "5df59877-d9b5-4369-b230-57b0c97bab66",
       "name": "Endpoint Agente",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1480,
-        -160
+        1488,
+        96
       ],
       "onError": "continueErrorOutput"
     },
@@ -129,13 +128,13 @@
           "parse_mode": "HTML"
         }
       },
-      "id": "b2000000-0000-4000-8000-000000000005",
+      "id": "39d292f6-7a17-4c22-bb34-ccfc7bfbd94f",
       "name": "Respuesta al cliente",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
       "position": [
-        1740,
-        -260
+        1744,
+        0
       ],
       "webhookId": "b9000000-0000-4000-8000-000000000005"
     },
@@ -148,13 +147,13 @@
           "parse_mode": "HTML"
         }
       },
-      "id": "b2000000-0000-4000-8000-000000000006",
+      "id": "c0965066-84a8-47d4-a0fe-7f8203e261e8",
       "name": "Avisar la falla",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
       "position": [
-        1740,
-        -60
+        1744,
+        208
       ],
       "webhookId": "b9000000-0000-4000-8000-000000000006"
     },
@@ -167,13 +166,13 @@
           "parse_mode": "HTML"
         }
       },
-      "id": "b2000000-0000-4000-8000-000000000007",
+      "id": "5aa3cfa3-df5c-4c7e-8cb3-3151d744f413",
       "name": "Solo texto o voz",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
       "position": [
-        760,
-        420
+        768,
+        688
       ],
       "webhookId": "b9000000-0000-4000-8000-000000000007"
     },
@@ -203,13 +202,13 @@
         "looseTypeValidation": true,
         "options": {}
       },
-      "id": "b2000000-0000-4000-8000-000000000008",
+      "id": "012e445f-90ed-4de9-9d99-cfb308350f39",
       "name": "¿Trae voz?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        500,
-        240
+        496,
+        496
       ]
     },
     {
@@ -220,13 +219,13 @@
           "mimeType": "audio/ogg"
         }
       },
-      "id": "b2000000-0000-4000-8000-000000000009",
+      "id": "9ab139b6-b757-4f83-8162-487a3fc538a8",
       "name": "Descargar audio",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
       "position": [
-        760,
-        140
+        768,
+        400
       ],
       "webhookId": "b9000000-0000-4000-8000-000000000009",
       "onError": "continueErrorOutput"
@@ -234,24 +233,21 @@
     {
       "parameters": {
         "resource": "audio",
-        "operation": "transcribe",
         "modelId": {
           "__rl": true,
           "value": "models/gemini-3.5-flash-lite",
           "mode": "id"
         },
         "inputType": "binary",
-        "binaryPropertyName": "data",
-        "simplify": true,
         "options": {}
       },
-      "id": "b2000000-0000-4000-8000-00000000000a",
+      "id": "1ee6c7f2-df98-4f43-81f7-aa06305e8a1e",
       "name": "Transcribir",
       "type": "@n8n/n8n-nodes-langchain.googleGemini",
       "typeVersion": 1,
       "position": [
-        1000,
-        120
+        1008,
+        384
       ],
       "onError": "continueErrorOutput"
     },
@@ -281,13 +277,13 @@
         },
         "options": {}
       },
-      "id": "b2000000-0000-4000-8000-00000000000b",
+      "id": "752072a3-1f8c-4bd0-b452-896bcafe35c3",
       "name": "Texto del audio",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        1240,
-        100
+        1248,
+        368
       ]
     },
     {
@@ -299,15 +295,78 @@
           "parse_mode": "HTML"
         }
       },
-      "id": "b2000000-0000-4000-8000-00000000000c",
+      "id": "d5e4b0ae-18b4-4b4f-a909-874ea1ad335b",
       "name": "Audio no entendido",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
       "position": [
-        1240,
-        300
+        1248,
+        560
       ],
       "webhookId": "b9000000-0000-4000-8000-00000000000c"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "gif-cond-animation",
+              "leftValue": "={{ $json.message.animation?.file_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "gif-cond-document",
+              "leftValue": "={{ $json.message.document?.mime_type }}",
+              "rightValue": "image/gif",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "157f6bf5-7466-4277-bea9-a2c04fb79d1e",
+      "name": "¿Trae GIF?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        760,
+        860
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "Por ahora no soporto GIFs 🙅 Mándame texto o un audio de voz y te ayudo.",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "c75a682d-3d27-4eff-a189-6d0b4a059b30",
+      "name": "No soporta GIF",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1020,
+        860
+      ],
+      "webhookId": "b23965b9-c7d2-4fac-9abe-ea2a777382d8"
     }
   ],
   "connections": {
@@ -380,7 +439,7 @@
         ],
         [
           {
-            "node": "Solo texto o voz",
+            "node": "¿Trae GIF?",
             "type": "main",
             "index": 0
           }
@@ -428,6 +487,24 @@
         [
           {
             "node": "Endpoint Agente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Trae GIF?": {
+      "main": [
+        [
+          {
+            "node": "No soporta GIF",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Solo texto o voz",
             "type": "main",
             "index": 0
           }
