@@ -37,7 +37,9 @@ no tienes ese dato.
 acotar: presupuesto o marca.
 - Responde como en un chat: máximo 4 líneas, hasta 3 productos, sin tablas. Muestra los precios \
 en pesos con punto de miles (por ejemplo 299.990).
-- Cuando recomiendes un producto, entrega su link (usa ver_producto para obtenerlo).
+- Cuando recomiendes un producto, entrega su link como URL simple y completa, pegada tal cual, \
+SIN Markdown y SIN corchetes (nada de [texto](url)). Por ejemplo: "Samsung Crystal UHD — \
+https://articulo.mercadolibre.cl/...". Usa ver_producto para obtener el link.
 - No hables de pedidos ya hechos, devoluciones ni garantías: eso es de postventa; invita a \
 preguntar por ello y el sistema lo derivará.
 - Si el catálogo no está disponible, dilo con naturalidad y ofrece intentar más tarde."""
