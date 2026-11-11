@@ -8,15 +8,17 @@ Documentación interactiva (Swagger) en http://localhost:8000/docs
 
 import logging
 import os
+from contextlib import asynccontextmanager
 
 import httpx
 from dotenv import load_dotenv
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import FastAPI, Header, HTTPException, Request
 from pydantic import BaseModel, Field
 
-# El grafo se importa (y por tanto se compila con MemorySaver) UNA sola vez,
-# al arrancar la app; no en cada request.
-from src.router.graph import graph
+# El grafo se compila UNA sola vez, al arrancar la app (en el lifespan), con el
+# checkpointer que corresponda (Postgres si hay DATABASE_URL, si no RAM).
+from src.router.graph import construir_grafo
+from src.router.memoria import abrir_checkpointer
 
 # Shim compatible con OpenAI (/v1/*) para clientes como Open WebUI.
 from api.openai_compat import router as openai_router
@@ -29,6 +31,19 @@ MODELO = os.getenv("MODELO", "")
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN", "")
 TELEGRAM_SECRET = os.getenv("TELEGRAM_SECRET", "")
 TELEGRAM_API = "https://api.telegram.org"
+
+
+# --- Ciclo de vida: abre la memoria al arrancar y la cierra al apagar ---------
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # abrir_checkpointer abre el pool de Postgres (o cae a RAM) y lo cierra al salir.
+    with abrir_checkpointer() as (checkpointer, tipo):
+        app.state.graph = construir_grafo(checkpointer)
+        app.state.memoria = tipo
+        logger.info("API lista. Memoria: %s", tipo)
+        yield
+
 
 # --- Metadatos del Swagger (OpenAPI) ------------------------------------------
 
@@ -53,6 +68,7 @@ app = FastAPI(
     version="0.1.0",
     description=DESCRIPCION,
     openapi_tags=TAGS,
+    lifespan=lifespan,
 )
 
 # Expone /v1/models y /v1/chat/completions (formato OpenAI) para Open WebUI.
@@ -91,13 +107,17 @@ class ChatResponse(BaseModel):
 class HealthResponse(BaseModel):
     ok: bool = Field(examples=[True])
     modelo: str = Field(description="Modelo configurado en la variable de entorno MODELO.", examples=[MODELO or "gemini-3.5-flash-lite"])
+    memoria: str = Field(
+        description="Tipo de memoria activa: 'postgres' (persistente, sobrevive a reinicios) o 'ram' (se pierde al reiniciar).",
+        examples=["postgres"],
+    )
 
 
 # --- Rutas --------------------------------------------------------------------
 
 @app.get("/health", tags=["salud"], response_model=HealthResponse, summary="Estado de la API")
-def health() -> HealthResponse:
-    return HealthResponse(ok=True, modelo=MODELO)
+def health(request: Request) -> HealthResponse:
+    return HealthResponse(ok=True, modelo=MODELO, memoria=request.app.state.memoria)
 
 
 @app.post(
@@ -111,7 +131,9 @@ def health() -> HealthResponse:
         502: {"description": "El modelo falló al clasificar el mensaje."},
     },
 )
-def chat(req: ChatRequest) -> ChatResponse:
+def chat(req: ChatRequest, request: Request) -> ChatResponse:
+    graph = request.app.state.graph
+    # El thread_id es el user_id: no cambia el contrato de /chat.
     config = {"configurable": {"thread_id": req.user_id}}
     try:
         final = graph.invoke({"mensaje": req.texto}, config)
@@ -134,7 +156,7 @@ def _enviar_telegram(chat_id: int, text: str) -> None:
 
 
 @app.post("/telegram", tags=["telegram"], include_in_schema=False)
-def telegram(update: dict, x_telegram_bot_api_secret_token: str | None = Header(default=None)) -> dict:
+def telegram(update: dict, request: Request, x_telegram_bot_api_secret_token: str | None = Header(default=None)) -> dict:
     # Telegram manda este header con el secret_token que registramos en setWebhook.
     if x_telegram_bot_api_secret_token != TELEGRAM_SECRET:
         raise HTTPException(status_code=403, detail="Secret token inválido")
@@ -147,6 +169,7 @@ def telegram(update: dict, x_telegram_bot_api_secret_token: str | None = Header(
     if not text or chat_id is None:
         return {"ok": True}
 
+    graph = request.app.state.graph
     config = {"configurable": {"thread_id": str(chat_id)}}
     try:
         respuesta = graph.invoke({"mensaje": text}, config)["respuesta"]

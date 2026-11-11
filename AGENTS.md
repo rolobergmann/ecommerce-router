@@ -20,6 +20,7 @@ Flags:
 
 - `--saltos`: además de la respuesta, imprime los nodos por los que pasó el grafo.
 - `--diagrama`: imprime el diagrama Mermaid del grafo **sin ejecutarlo**.
+- `--hilo NOMBRE`: elige el `thread_id` de la memoria (por defecto `cli`). Usa la misma memoria que la API (Postgres si hay `DATABASE_URL`, si no RAM).
 
 ## API
 

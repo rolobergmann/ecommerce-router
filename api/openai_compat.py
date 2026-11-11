@@ -13,11 +13,9 @@ import logging
 import time
 import uuid
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-
-from src.router.graph import graph
 
 logger = logging.getLogger("api.openai_compat")
 
@@ -45,7 +43,7 @@ def listar_modelos() -> dict:
     }
 
 
-def _responder(texto: str) -> str:
+def _responder(graph, texto: str) -> str:
     """Pasa el mensaje por el router y devuelve la respuesta del agente + la ruta elegida."""
     thread_id = uuid.uuid4().hex  # Open WebUI reenvía el historial, así que cada turno es independiente.
     try:
@@ -64,9 +62,10 @@ def _ultimo_mensaje_usuario(messages: list[Mensaje]) -> str:
 
 
 @router.post("/chat/completions")
-def chat_completions(req: ChatCompletionRequest):
+def chat_completions(req: ChatCompletionRequest, request: Request):
+    graph = request.app.state.graph
     texto = _ultimo_mensaje_usuario(req.messages)
-    contenido = _responder(texto) if texto else "No recibí ningún mensaje."
+    contenido = _responder(graph, texto) if texto else "No recibí ningún mensaje."
 
     cid = f"chatcmpl-{uuid.uuid4().hex}"
     creado = int(time.time())

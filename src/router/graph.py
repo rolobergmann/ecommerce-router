@@ -86,4 +86,19 @@ builder.add_edge("agente_preventa", END)
 builder.add_edge("agente_postventa", END)
 builder.add_edge("respuesta_generica", END)
 
+
+# Re-exportado para que main.py pueda abrir la misma memoria que la API.
+from src.router.memoria import abrir_checkpointer  # noqa: E402
+
+
+def construir_grafo(checkpointer):
+    """Compila el grafo con el checkpointer dado (Postgres o RAM).
+
+    La API y el CLI lo llaman con el checkpointer que entrega `abrir_checkpointer`.
+    """
+    return builder.compile(checkpointer=checkpointer)
+
+
+# Grafo por defecto con memoria RAM: lo usan `--diagrama` y las pruebas,
+# que no necesitan persistencia. La API y el CLI usan `construir_grafo`.
 graph = builder.compile(checkpointer=MemorySaver())
