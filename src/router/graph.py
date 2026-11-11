@@ -43,6 +43,7 @@ _llm = None
 _generica = None
 _tienda_md = None
 _preventa = None
+_postventa = None
 
 
 def _router_llm():
@@ -66,8 +67,17 @@ def _preventa_agent():
     global _preventa
     if _preventa is None:
         modelo = ChatGoogleGenerativeAI(model=os.environ["MODELO"], temperature=0)
-        _preventa = create_agent(modelo, tools.TOOLS, system_prompt=prompts.AGENTE_PREVENTA_PROMPT)
+        _preventa = create_agent(modelo, tools.TOOLS_PREVENTA, system_prompt=prompts.AGENTE_PREVENTA_PROMPT)
     return _preventa
+
+
+def _postventa_agent():
+    # Agente ReAct con las herramientas de pedidos, políticas y reclamos. Se arma al primer uso.
+    global _postventa
+    if _postventa is None:
+        modelo = ChatGoogleGenerativeAI(model=os.environ["MODELO"], temperature=0)
+        _postventa = create_agent(modelo, tools.TOOLS_POSTVENTA, system_prompt=prompts.AGENTE_POSTVENTA_PROMPT)
+    return _postventa
 
 
 def _tienda() -> str:
@@ -122,9 +132,25 @@ def agente_preventa(estado: Estado) -> Estado:
     return {"respuesta": respuesta, "messages": [AIMessage(respuesta)], "herramientas": herramientas}
 
 
-def agente_postventa(estado: Estado) -> Estado:
-    respuesta = prompts.AGENTE_POSTVENTA.format(mensaje=estado["mensaje"])
-    return {"respuesta": respuesta, "messages": [AIMessage(respuesta)]}
+def agente_postventa(estado: Estado, config) -> Estado:
+    # Agente ReAct con herramientas de pedidos/políticas/reclamos. Recibe todo el historial.
+    # config trae el thread_id: lo fijamos para que crear_reclamo registre la conversación.
+    thread_id = (config or {}).get("configurable", {}).get("thread_id", "desconocido")
+    tools.fijar_hilo(thread_id)
+    try:
+        resultado = _postventa_agent().invoke({"messages": estado.get("messages", [])})
+        mensajes = resultado["messages"]
+        respuesta = _texto_salida(mensajes[-1]) or prompts.POSTVENTA_FALLBACK
+        herramientas = [
+            llamada["name"]
+            for m in mensajes
+            for llamada in (getattr(m, "tool_calls", None) or [])
+        ]
+    except Exception:
+        logger.exception("El agente de postventa falló")
+        respuesta = prompts.POSTVENTA_FALLBACK
+        herramientas = []
+    return {"respuesta": respuesta, "messages": [AIMessage(respuesta)], "herramientas": herramientas}
 
 
 def respuesta_generica(estado: Estado) -> Estado:

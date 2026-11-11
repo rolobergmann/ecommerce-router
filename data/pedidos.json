@@ -1,0 +1,74 @@
+[
+  {
+    "numero": "1001",
+    "cliente": "Ana Rojas",
+    "productos": ["Samsung Crystal UHD 55\" 4K (2025)"],
+    "fecha_compra": "2026-10-20",
+    "estado": "despachado",
+    "entrega_estimada": "2026-11-12",
+    "seguimiento": "TRK1001CL"
+  },
+  {
+    "numero": "1002",
+    "cliente": "Luis Pérez",
+    "productos": ["Xiaomi 15T Pro Dorado 512 GB"],
+    "fecha_compra": "2026-10-25",
+    "estado": "entregado",
+    "entrega_estimada": "2026-10-28",
+    "seguimiento": "TRK1002CL"
+  },
+  {
+    "numero": "1003",
+    "cliente": "María González",
+    "productos": ["LG OLED evo 65\" C3 4K"],
+    "fecha_compra": "2026-11-01",
+    "estado": "preparando",
+    "entrega_estimada": "2026-11-15",
+    "seguimiento": "TRK1003CL"
+  },
+  {
+    "numero": "1004",
+    "cliente": "Jorge Muñoz",
+    "productos": ["iPhone 15 128 GB Negro"],
+    "fecha_compra": "2026-10-10",
+    "estado": "devuelto",
+    "entrega_estimada": "2026-10-14",
+    "seguimiento": "TRK1004CL"
+  },
+  {
+    "numero": "1005",
+    "cliente": "Camila Soto",
+    "productos": ["TCL QLED 55\" 4K", "Soporte de pared fijo"],
+    "fecha_compra": "2026-11-05",
+    "estado": "despachado",
+    "entrega_estimada": "2026-11-13",
+    "seguimiento": "TRK1005CL"
+  },
+  {
+    "numero": "1006",
+    "cliente": "Pedro Araya",
+    "productos": ["Samsung Galaxy A55 256 GB"],
+    "fecha_compra": "2026-11-07",
+    "estado": "preparando",
+    "entrega_estimada": "2026-11-18",
+    "seguimiento": "TRK1006CL"
+  },
+  {
+    "numero": "1007",
+    "cliente": "Francisca Díaz",
+    "productos": ["LG NanoCell 50\" 4K"],
+    "fecha_compra": "2026-09-30",
+    "estado": "entregado",
+    "entrega_estimada": "2026-10-05",
+    "seguimiento": "TRK1007CL"
+  },
+  {
+    "numero": "1008",
+    "cliente": "Diego Torres",
+    "productos": ["Motorola Edge 50 512 GB", "Audífonos Bluetooth"],
+    "fecha_compra": "2026-11-08",
+    "estado": "despachado",
+    "entrega_estimada": "2026-11-14",
+    "seguimiento": "TRK1008CL"
+  }
+]

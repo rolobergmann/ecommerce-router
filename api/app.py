@@ -19,6 +19,7 @@ from pydantic import BaseModel, Field
 # checkpointer que corresponda (Postgres si hay DATABASE_URL, si no RAM).
 from src.router.graph import construir_grafo
 from src.router.memoria import abrir_checkpointer
+from src.router import reclamos
 
 # Shim compatible con OpenAI (/v1/*) para clientes como Open WebUI.
 from api.openai_compat import router as openai_router
@@ -41,6 +42,7 @@ async def lifespan(app: FastAPI):
     with abrir_checkpointer() as (checkpointer, tipo):
         app.state.graph = construir_grafo(checkpointer)
         app.state.memoria = tipo
+        reclamos.asegurar_tabla()  # crea la tabla de reclamos si no existe
         logger.info("API lista. Memoria: %s", tipo)
         yield
 

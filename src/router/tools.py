@@ -1,17 +1,36 @@
-"""Herramientas del agente de preventa: consultan el catálogo (solo lectura).
+"""Herramientas de los agentes del router (catálogo de preventa y postventa).
 
-Cada herramienta arma un SELECT con parámetros (nunca concatenando texto del
-usuario o del modelo) y, si la base no responde, devuelve "Catálogo no disponible".
+Cada herramienta de catálogo arma un SELECT con parámetros (nunca concatenando texto
+del usuario o del modelo) y, si la base no responde, devuelve "Catálogo no disponible".
+Las de postventa leen pedidos/políticas de archivos y guardan reclamos en Postgres.
 """
 
+import contextvars
+import json
+import unicodedata
 from decimal import Decimal
+from pathlib import Path
 
 from langchain_core.tools import tool
 
-from src.router import catalogo
+from src.router import catalogo, reclamos
 
 VISTA = "catalogo.productos_unicos"
+RUTA_DATA = Path(__file__).resolve().parents[2] / "data"
 
+# thread_id de la conversación en curso, para que crear_reclamo sepa de dónde viene.
+# Lo fija el nodo agente_postventa antes de invocar al agente.
+_HILO = contextvars.ContextVar("hilo_actual", default="desconocido")
+
+_pedidos_cache = None
+_politicas_cache = None
+
+
+def fijar_hilo(thread_id: str) -> None:
+    _HILO.set(thread_id or "desconocido")
+
+
+# --- Helpers de catálogo ------------------------------------------------------
 
 def _num(valor):
     """Normaliza Decimal a int/float; deja None como None."""
@@ -33,6 +52,46 @@ def _resumen(fila: dict) -> dict:
         "rating": _num(fila.get("rating")),
     }
 
+
+# --- Helpers de postventa -----------------------------------------------------
+
+def _norm(texto: str) -> str:
+    """Minúsculas sin acentos, para comparar temas de políticas."""
+    nfd = unicodedata.normalize("NFD", texto.lower())
+    return "".join(c for c in nfd if unicodedata.category(c) != "Mn").strip()
+
+
+def _pedidos() -> list[dict]:
+    global _pedidos_cache
+    if _pedidos_cache is None:
+        _pedidos_cache = json.loads((RUTA_DATA / "pedidos.json").read_text(encoding="utf-8"))
+    return _pedidos_cache
+
+
+def _politicas() -> dict:
+    """Secciones de politicas.md indexadas por su título normalizado."""
+    global _politicas_cache
+    if _politicas_cache is None:
+        texto = (RUTA_DATA / "politicas.md").read_text(encoding="utf-8")
+        secciones: dict[str, str] = {}
+        titulo = None
+        cuerpo: list[str] = []
+        for linea in texto.splitlines():
+            if linea.startswith("## "):
+                if titulo is not None:
+                    secciones[titulo] = "\n".join(cuerpo).strip()
+                encabezado = linea[3:].strip()
+                titulo = _norm(encabezado)
+                cuerpo = [encabezado]
+            elif titulo is not None:
+                cuerpo.append(linea)
+        if titulo is not None:
+            secciones[titulo] = "\n".join(cuerpo).strip()
+        _politicas_cache = secciones
+    return _politicas_cache
+
+
+# --- Herramientas de preventa -------------------------------------------------
 
 @tool
 def buscar_productos(consulta: str, categoria: str = "", marca: str = "", precio_max: int | None = None):
@@ -136,4 +195,39 @@ def mejores_ofertas(categoria: str = "", limite: int = 5):
     return [_resumen(f) for f in filas]
 
 
-TOOLS = [buscar_productos, ver_producto, mejores_ofertas]
+# --- Herramientas de postventa ------------------------------------------------
+
+@tool
+def estado_pedido(numero: str):
+    """Devuelve los datos y el estado de un pedido por su número. Si no existe, lo dice."""
+    objetivo = str(numero).strip()
+    for pedido in _pedidos():
+        if str(pedido.get("numero")).strip() == objetivo:
+            return pedido
+    return "Ese número de pedido no existe."
+
+
+@tool
+def politica(tema: str) -> str:
+    """Devuelve la política de la tienda sobre un tema: "devoluciones", "cambios" o "garantia"."""
+    secciones = _politicas()
+    clave = _norm(tema)
+    for titulo, cuerpo in secciones.items():
+        if clave == titulo or clave in titulo or titulo in clave:
+            return cuerpo
+    return "No tengo una política sobre ese tema. Puedo ayudarte con devoluciones, cambios o garantía."
+
+
+@tool
+def crear_reclamo(numero_pedido: str, motivo: str, detalle: str = "") -> str:
+    """Crea un reclamo para un pedido y devuelve su número de ticket.
+
+    Úsala solo DESPUÉS de confirmar el motivo con el cliente. Para pedir que lo
+    contacte una persona, usa motivo "derivar a persona".
+    """
+    ticket = reclamos.guardar(str(numero_pedido), motivo, detalle, _HILO.get())
+    return f"Reclamo creado con el ticket {ticket}."
+
+
+TOOLS_PREVENTA = [buscar_productos, ver_producto, mejores_ofertas]
+TOOLS_POSTVENTA = [estado_pedido, politica, crear_reclamo]
