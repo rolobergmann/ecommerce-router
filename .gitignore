@@ -11,3 +11,7 @@ __pycache__
 
 # Material local (capturas del curso): no es parte de la app
 capturas
+
+# Config del editor
+.vscode
+.idea

@@ -12,8 +12,10 @@ from contextlib import asynccontextmanager
 
 import httpx
 from dotenv import load_dotenv
-from fastapi import FastAPI, Header, HTTPException, Request
+from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from pydantic import BaseModel, Field
+
+from api.seguridad import verificar_token
 
 # El grafo se compila UNA sola vez, al arrancar la app (en el lifespan), con el
 # checkpointer que corresponda (Postgres si hay DATABASE_URL, si no RAM).
@@ -127,8 +129,10 @@ def health(request: Request) -> HealthResponse:
     tags=["chat"],
     response_model=ChatResponse,
     summary="Enrutar un mensaje del cliente",
+    dependencies=[Depends(verificar_token)],
     responses={
         200: {"description": "El mensaje se enrutó correctamente."},
+        401: {"description": "Falta el token de acceso o es inválido (si API_TOKEN está configurado)."},
         422: {"description": "Body inválido (por ejemplo, falta 'texto' o viene vacío)."},
         502: {"description": "El modelo falló al clasificar el mensaje."},
     },

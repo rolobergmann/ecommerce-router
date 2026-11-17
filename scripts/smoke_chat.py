@@ -36,10 +36,17 @@ def corto(texto: str, ancho: int) -> str:
     return texto if len(texto) <= ancho else texto[: ancho - 1] + "…"
 
 
+def headers() -> dict:
+    # Si hay API_TOKEN, la API exige el header Authorization: Bearer <token>.
+    token = os.getenv("API_TOKEN", "")
+    return {"Authorization": f"Bearer {token}"} if token else {}
+
+
 def main() -> None:
     sys.stdout.reconfigure(encoding="utf-8")
     url = f"{base_url()}/chat"
-    print(f"POST {url}\n")
+    cabeceras = headers()
+    print(f"POST {url}  (token: {'sí' if cabeceras else 'no'})\n")
     print(f"{'Mensaje':<42} {'Esperado':<10} {'Obtenido':<12} OK  Motivo")
     print("-" * 110)
 
@@ -48,7 +55,7 @@ def main() -> None:
     for i, caso in enumerate(CASOS):
         payload = {"user_id": f"smoke-{i}", "texto": caso["mensaje"]}
         try:
-            r = httpx.post(url, json=payload, timeout=30)
+            r = httpx.post(url, json=payload, headers=cabeceras, timeout=30)
         except Exception as e:
             print(f"{corto(caso['mensaje'], 42):<42} {caso['esperado']:<10} {'ERROR':<12} ✘   {e}")
             fallados.append(caso["mensaje"])

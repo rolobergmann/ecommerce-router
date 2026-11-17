@@ -1,130 +1,202 @@
-# Ecommerce Router API
+# Ecommerce Router — Agente de atención (Curso 2, Taller de implementación)
 
-Chat de atención de un ecommerce construido con **LangGraph** y servido con **FastAPI**.
-Un nodo *router* clasifica cada mensaje y lo deriva a uno de tres agentes: **preventa**,
-**postventa** o **genérica**. Por ahora los agentes destino son cascarones; lo que importa
-es que el router enrute bien.
+Agente de atención para un ecommerce de **televisores y celulares** (tienda ficticia *ElectroMax*).
+Un **router** (LangGraph) clasifica cada mensaje del cliente y lo deriva a uno de tres agentes:
 
-## Requisitos
+- **preventa** — agente ReAct que consulta el **catálogo real** (Postgres) para buscar productos, precios y ofertas.
+- **postventa** — agente ReAct con estado de pedidos, políticas (devoluciones/cambios/garantía) y creación de **reclamos** (Postgres).
+- **genérica** — asistente conversacional de la tienda (saluda, responde datos de la tienda, rechaza lo off-topic y el jailbreak).
 
-- Python 3.12
-- Una `GOOGLE_API_KEY` de Google AI Studio (Gemini)
+La conversación tiene **memoria persistente** por cliente (checkpointer de LangGraph sobre Postgres), así que sobrevive a reinicios.
 
-## Configuración
+---
+
+## Integrantes y aportes
+
+- **Wil Martínez** — Grupo 7. Implementación completa: router y agentes (preventa / postventa / genérica),
+  API FastAPI y control de acceso, memoria persistente y catálogo (Postgres), canal Telegram vía n8n (texto y voz),
+  web de chat (Open WebUI) y despliegue en Heroku.
+
+---
+
+## Opción elegida (lo que implementamos)
+
+Del encargo construimos **más de una** opción (se exigía al menos una):
+
+1. **Servicio FastAPI con acceso protegido** — `api/app.py`, con token configurable validado en el servidor.
+2. **Canal de atención** — **Telegram** (vía **n8n**, texto y **voz**) y una **web de chat** (Open WebUI, vía un shim OpenAI).
+3. **Despliegue verificable (+1 opcional)** — publicado en **Heroku**.
+
+**Problema que resuelve:** atención automática de un ecommerce (consultas de compra, seguimiento de pedidos y reclamos),
+derivando cada mensaje al agente adecuado y respondiendo con datos reales del catálogo/pedidos, no respuestas simuladas.
+
+**Qué se reutiliza del trabajo anterior:** la estructura de agentes en `src/{agente}/` (grafo, prompts y tools) y el patrón de
+derivación entre agentes especializados.
+
+---
+
+## Arquitectura (rápida)
+
+```
+Cliente ──► Canal (Telegram vía n8n / Web Open WebUI / HTTP directo)
+                 │
+                 ▼
+         FastAPI  /chat  (token)
+                 │
+                 ▼
+        Router (LangGraph) ──► preventa / postventa / genérica
+                 │                     │
+         memoria (Postgres)     catálogo y reclamos (Postgres)
+```
+
+- **Modelo:** Google Gemini (`langchain-google-genai`).
+- **Memoria:** `PostgresSaver` si hay `DATABASE_URL`; si no, `MemorySaver` (RAM). `GET /health` informa cuál está activa.
+- **Catálogo:** vista de solo lectura `catalogo.productos_unicos` (Postgres).
+
+---
+
+## Preparación manual (cuentas y credenciales de prueba)
+
+Todas las claves van solo en `.env` (local) o en los Config Vars del servidor; **nunca** en el repo. Ver `.env.example`.
+
+| Variable | Para qué | Cómo obtenerla |
+|---|---|---|
+| `GOOGLE_API_KEY` | Modelo Gemini | Google AI Studio → API key |
+| `MODELO` | Nombre del modelo | p. ej. `gemini-3.5-flash-lite` |
+| `API_TOKEN` | Proteger `/chat` y `/v1` | Lo eliges tú (cadena larga y secreta) |
+| `DATABASE_URL` | Memoria + catálogo + reclamos | Cadena de conexión Postgres (base del curso) |
+| `TELEGRAM_TOKEN` | Bot de Telegram | @BotFather → nuevo bot |
+| `TELEGRAM_SECRET` | Validar el webhook de Telegram | Lo eliges tú |
+| `PUBLIC_URL` | Base del webhook (Telegram directo) | URL pública de la app |
+
+El **canal Telegram** usa **n8n** (n8n Cloud): un flujo recibe el mensaje y llama a `/chat`. El JSON del flujo está en
+`n8n/flujo_telegram_agente.json`. La **web de chat** usa Open WebUI apuntando al shim `/v1`.
+
+---
+
+## Instalación (local, reproducible)
+
+Requiere **Python 3.12** (ver `.python-version`).
 
 ```bash
+# 1. Clonar y entrar
+git clone <url-del-repo> ecommerce-router
+cd ecommerce-router
+
+# 2. Entorno virtual
 python -m venv .venv
-.\.venv\Scripts\Activate.ps1   # Windows PowerShell
+# Windows PowerShell:
+.\.venv\Scripts\Activate.ps1
+# Linux/Mac:
+# source .venv/bin/activate
+
+# 3. Dependencias
 pip install -r requirements.txt
+
+# 4. Configuración
+# copia .env.example como .env y rellena los valores reales
+cp .env.example .env     # en PowerShell: Copy-Item .env.example .env
 ```
 
-Copia `.env.example` a `.env` y rellena al menos `GOOGLE_API_KEY`. Nunca subas `.env` al repo.
+---
 
-## Correr el router en local (CLI)
+## Comandos: iniciar, probar y detener
 
+### Agente por consola (CLI)
 ```bash
-python main.py router "¿tienen la polera azul en talla M?"
-python main.py router "mi pedido 4521 llegó roto" --saltos
-python main.py router --diagrama
+python main.py router "busco un televisor de 55 pulgadas barato" --saltos
+python main.py router "mi pedido 1003 no llega" --hilo demo --saltos
+python main.py router "quiero un celular" --diagrama   # imprime el grafo (Mermaid), sin ejecutar
 ```
+- `--saltos`: muestra los nodos y herramientas usados. `--hilo NOMBRE`: elige el hilo de memoria. `--diagrama`: solo dibuja.
 
-## Levantar la API
-
+### API (FastAPI)
 ```bash
+# Iniciar
 uvicorn api.app:app --reload --port 8000
+# Detener: Ctrl+C
 ```
+- Documentación interactiva (Swagger): http://localhost:8000/docs
+- Salud: http://localhost:8000/health  → `{"ok":true,"modelo":...,"memoria":"postgres|ram"}`
 
-- Swagger / documentación interactiva: http://localhost:8000/docs
-- Estado: http://localhost:8000/health
-
-### Ejemplo con curl
-
+### Probar la API
 ```bash
+# con token (si API_TOKEN está definido)
 curl -X POST http://localhost:8000/chat \
   -H "Content-Type: application/json" \
-  -d "{\"user_id\": \"cliente-123\", \"texto\": \"¿tienen la polera azul en talla M?\"}"
+  -H "Authorization: Bearer $API_TOKEN" \
+  --data-raw '{"user_id":"cliente-1","texto":"busco un celular Samsung"}'
+
+# prueba de ruteo end-to-end (6 mensajes)
+python scripts/smoke_chat.py            # usa PUBLIC_URL o localhost
 ```
 
-Respuesta:
-
-```json
-{
-  "ruta": "preventa",
-  "motivo": "El cliente pregunta por la talla de un producto antes de comprar.",
-  "respuesta": "Soy el agente de preventa. Recibí: ¿tienen la polera azul en talla M?. Pronto podré ayudarte con productos y compras."
-}
+### Scripts de inspección
+```bash
+python scripts/ver_catalogo.py "samsung"   # productos por nombre; sin args: conteo por categoría
+python scripts/ver_memoria.py              # hilos guardados; con un hilo: su conversación
+python scripts/ver_reclamos.py             # reclamos de postventa
 ```
 
-## Pruebas
+### Pruebas
+```bash
+pytest       # pruebas del router (mínimo de aciertos)
+```
+
+### Canal Telegram (n8n)
+Importar `n8n/flujo_telegram_agente.json` en n8n, configurar la credencial de Telegram (token del bot),
+poner la URL de la API en el nodo *Endpoint Agente* y **publicar** el flujo (registra el webhook).
+Al activarlo, escribir al bot dispara: Telegram → n8n → `/chat` → respuesta.
+
+### Web de chat (Open WebUI)
+Conectar Open WebUI a `http://127.0.0.1:8000/v1` (tipo de API: *Chat Completions*). Si `API_TOKEN` está definido,
+usar ese token como *API Key* de la conexión.
+
+---
+
+## Control de acceso (demostrable)
+
+`/chat` y `/v1/*` están protegidos cuando `API_TOKEN` está definido. `/health` queda abierto (monitoreo).
 
 ```bash
-python scripts/test_router.py   # tabla de aciertos sobre 15 casos
-pytest                          # exige al menos 13/15 aciertos
+# Acceso RECHAZADO (sin token o token inválido) → 401
+curl -i -X POST http://localhost:8000/chat -H "Content-Type: application/json" \
+  --data-raw '{"user_id":"x","texto":"hola"}'
+
+# Acceso PERMITIDO (token correcto) → 200
+curl -i -X POST http://localhost:8000/chat -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <tu-API_TOKEN>" \
+  --data-raw '{"user_id":"x","texto":"hola"}'
 ```
 
-## Bruno
+---
 
-La carpeta `bruno/` trae una colección con `health`, `chat-preventa`, `chat-postventa` y
-`chat-generica`. La URL base está en la variable de entorno `baseUrl`: elige el entorno
-`local` o `heroku` en Bruno para cambiar de servidor.
+## Evidencias
 
-## Despliegue en Heroku
+Las capturas de ejecución local y sus explicaciones están en `evidencias/` (ver `evidencias/EVIDENCIAS.md`).
+Cada caso indica entorno/fecha (LOCAL), solicitud, resultado esperado, resultado obtenido y observaciones.
 
-El repo se despliega tal cual: Heroku construye desde `requirements.txt`, usa `.python-version`
-(3.12) y arranca con el `Procfile`:
+---
 
+## Despliegue en Heroku (+1 opcional)
+
+El proyecto corre en Heroku (`Procfile` + `.python-version` + `requirements.txt`).
+
+```bash
+heroku git:remote -a <tu-app>
+git push heroku main
+# Config Vars (no van en el repo): GOOGLE_API_KEY, MODELO, DATABASE_URL, API_TOKEN, TELEGRAM_TOKEN, TELEGRAM_SECRET, PUBLIC_URL
 ```
-web: uvicorn api.app:app --host 0.0.0.0 --port $PORT
-```
+Para proteger `/chat` también en Heroku, definir `API_TOKEN` en Config Vars y hacer que el nodo de n8n envíe el
+header `Authorization: Bearer <API_TOKEN>` (credencial *Header Auth* en n8n).
 
-Pasos (desde el panel https://dashboard.heroku.com):
+---
 
-1. **New → Create new app**: nombre único (será la URL `https://<nombre>.herokuapp.com`) y región.
-2. **Deploy → Deployment method → GitHub**: conecta este repo.
-3. **Settings → Reveal Config Vars**: agrega una por una las variables del `.env`
-   (`GOOGLE_API_KEY`, `MODELO`, `PUBLIC_URL`). Las de Telegram se agregan en el paso de Telegram.
-   **Nunca** subas el `.env` al repo; las claves van solo como Config Vars.
-4. **Deploy → Manual deploy → main → Deploy Branch**.
-5. **Comprobar**: `Open app` → `/health` y `/docs`.
+## Límites conocidos
 
-## Conectar Telegram
-
-El bot se conecta **sin librerías de bot**, solo con `httpx`. Telegram manda cada mensaje a
-`PUBLIC_URL/telegram`; la API valida el secreto, invoca el grafo y responde con `sendMessage`.
-
-1. **Crear el bot**: habla con **@BotFather** (`/newbot`), copia el token a `TELEGRAM_TOKEN`
-   en `.env` y elige un `TELEGRAM_SECRET` (cualquier cadena secreta).
-2. **Config Vars en Heroku**:
-
-   ```bash
-   heroku config:set TELEGRAM_TOKEN=... TELEGRAM_SECRET=... --app ecommerce-rbp
-   ```
-
-3. **Subir los cambios** a GitHub (y a Heroku, si no tienes Automatic Deploys):
-
-   ```bash
-   git add -A
-   git commit -m "telegram: webhook y sendMessage"
-   git push
-   ```
-
-4. **Registrar el webhook** y confirmarlo (con `PUBLIC_URL` apuntando a tu app de Heroku):
-
-   ```bash
-   python scripts/set_webhook.py     # setWebhook con url y secret_token
-   python scripts/webhook_info.py    # getWebhookInfo: confirma que quedó bien
-   ```
-
-5. **Probar**: escribe al bot los 6 mensajes del router y revisa en los logs qué ruta tomó cada uno:
-
-   ```bash
-   heroku logs --tail --app ecommerce-rbp
-   ```
-
-**Si el bot no responde**, revisa: el webhook apunta a **https** (no http), el `TELEGRAM_SECRET`
-es **igual** en Heroku y en el webhook, y el `TELEGRAM_TOKEN` es correcto. `webhook_info.py`
-muestra el último error pendiente.
-
-> **Probar en local sin desplegar (opcional):** levanta un túnel con
-> `cloudflared tunnel --url http://localhost:8000`, usa esa URL https como `PUBLIC_URL`,
-> corre `set_webhook.py` y prueba el bot contra tu máquina.
+- **Clave de Gemini compartida del curso:** si se agota el crédito, `/chat` devuelve **502** limpio y el bot un mensaje de
+  "no puedo responder"; no es un bug.
+- **Postgres compartida del curso:** los `thread_id` (y los reclamos) pueden colisionar entre estudiantes; para demos usar un hilo propio.
+- **Transcripción de voz (Telegram):** depende de que el modelo Gemini acepte audio por el nodo de n8n; si falla, el flujo responde "no pude escuchar tu audio".
+- **Pendientes:** canal de WhatsApp y envío de correos (vía MCP) quedaron fuera de esta entrega.
+- **Datos de ejemplo:** `data/pedidos.json` y `data/politicas.md` son ficticios; el catálogo es real (base del curso).

@@ -13,13 +13,16 @@ import logging
 import time
 import uuid
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
+from api.seguridad import verificar_token
+
 logger = logging.getLogger("api.openai_compat")
 
-router = APIRouter(prefix="/v1", tags=["openai"])
+# Todo /v1/* queda protegido por el mismo token (Open WebUI lo envía como API key).
+router = APIRouter(prefix="/v1", tags=["openai"], dependencies=[Depends(verificar_token)])
 
 MODEL_ID = "ecommerce-router"
 
