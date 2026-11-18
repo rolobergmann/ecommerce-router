@@ -115,13 +115,17 @@ def router(estado: Estado) -> Estado:
 def agente_preventa(estado: Estado) -> Estado:
     # Agente ReAct con herramientas de catálogo. Recibe todo el historial (no solo el último).
     try:
-        resultado = _preventa_agent().invoke({"messages": estado.get("messages", [])})
+        # Copia del historial: el sub-agente no debe mutar la lista del estado (si no, sus
+        # mensajes internos de herramientas se persistirían y lo inflarían turno a turno).
+        entrada = list(estado.get("messages", []))
+        resultado = _preventa_agent().invoke({"messages": entrada})
         mensajes = resultado["messages"]
         respuesta = _texto_salida(mensajes[-1]) or prompts.PREVENTA_FALLBACK
-        # Nombres de las herramientas que llamó, en orden, para mostrarlas en --saltos.
+        # Herramientas de ESTE turno (solo los mensajes nuevos), para mostrarlas en --saltos.
+        nuevos = mensajes[len(entrada):]
         herramientas = [
             llamada["name"]
-            for m in mensajes
+            for m in nuevos
             for llamada in (getattr(m, "tool_calls", None) or [])
         ]
     except Exception:
@@ -138,12 +142,15 @@ def agente_postventa(estado: Estado, config) -> Estado:
     thread_id = (config or {}).get("configurable", {}).get("thread_id", "desconocido")
     tools.fijar_hilo(thread_id)
     try:
-        resultado = _postventa_agent().invoke({"messages": estado.get("messages", [])})
+        # Copia del historial: el sub-agente no debe mutar la lista del estado.
+        entrada = list(estado.get("messages", []))
+        resultado = _postventa_agent().invoke({"messages": entrada})
         mensajes = resultado["messages"]
         respuesta = _texto_salida(mensajes[-1]) or prompts.POSTVENTA_FALLBACK
+        nuevos = mensajes[len(entrada):]
         herramientas = [
             llamada["name"]
-            for m in mensajes
+            for m in nuevos
             for llamada in (getattr(m, "tool_calls", None) or [])
         ]
     except Exception:

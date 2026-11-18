@@ -13,11 +13,14 @@ def _ejecutar(graph, args) -> None:
     config = {"configurable": {"thread_id": args.hilo}}
     saltos = []
     for paso in graph.stream({"mensaje": args.mensaje}, config, stream_mode="updates"):
-        saltos.extend(paso.keys())
+        # Cada nodo aporta su nombre y, si usó herramientas en ESTE turno, sus nombres.
+        # Se leen del update del nodo (no del estado acumulado), para que --saltos salga
+        # limpio aunque el hilo tenga historial: "router → agente_preventa → buscar_productos".
+        for nodo, update in paso.items():
+            saltos.append(nodo)
+            if isinstance(update, dict):
+                saltos.extend(update.get("herramientas") or [])
     final = graph.get_state(config).values
-    # El agente de preventa anota en el estado las herramientas que usó: las sumamos
-    # al final para que --saltos muestre "router → agente_preventa → buscar_productos → ...".
-    saltos.extend(final.get("herramientas", []))
 
     if args.saltos:
         print("Saltos:", " → ".join(saltos))
