@@ -13,9 +13,12 @@ La conversación tiene **memoria persistente** por cliente (checkpointer de Lang
 
 ## Integrantes y aportes
 
-- **Wil Martínez** — Grupo 7. Implementación completa: router y agentes (preventa / postventa / genérica),
-  API FastAPI y control de acceso, memoria persistente y catálogo (Postgres), canal Telegram vía n8n (texto y voz),
-  web de chat (Open WebUI) y despliegue en Heroku.
+- **Rolando Bergmann** — Grupo 7
+- **Wil Martínez** — Grupo 7
+
+Trabajo en equipo sobre el proyecto completo: router y agentes (preventa / postventa / genérica),
+API FastAPI y control de acceso, memoria persistente y catálogo (Postgres), canal Telegram vía n8n
+(texto y voz), web de chat (Open WebUI), despliegue en Heroku y evidencias.
 
 ---
 
