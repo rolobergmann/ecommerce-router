@@ -1,0 +1,6 @@
+# Tratar binarios como binarios (sin conversión de fin de línea al clonar).
+*.pdf binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.ico binary
